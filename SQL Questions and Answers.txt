@@ -1,0 +1,109 @@
+
+1. Find customers who have never ordered
+
+SELECT name FROM users 
+WHERE user_id NOT IN (SELECT DISTINCT(user_id) FROM orders)
+
+2. Average Price/dish
+
+SELECT f_name,Average_Price FROM food
+INNER JOIN 
+(SELECT f_id, AVG(price) as Average_Price FROM menu 
+group by f_id) t
+ON food.f_id = t.f_id
+
+		    OR 
+
+SELECT f.f_name, AVG(price) as Average_Price FROM menu m
+INNER JOIN 
+food f 
+ON m.f_id = f.f_id
+group by m.f_id
+
+3. Find the top restaurant in terms of the number of orders for a given month (June) 
+
+SELECT r.r_name, t.count from restaurants r
+INNER JOIN 
+(SELECT r_id, COUNT(*) AS count FROM orders
+WHERE date LIKE '%06%'
+GROUP BY r_id) t 
+ON r.r_id = t.r_id 
+ORDER BY t.count DESC
+LIMIT 1
+
+4. restaurants with monthly sales greater than x for given month (450,June)
+
+SELECT r.r_name,SUM(o.amount) AS Sales FROM orders o 
+JOIN 
+restaurants r
+ON o.r_id = r.r_id
+WHERE MONTHNAME(date) LIKE 'June'
+GROUP BY o.r_id
+HAVING Sales > 450
+ORDER BY Sales
+
+5. Show all orders with order details for a particular customer in a particular date range
+
+SELECT f.f_name,r.r_name,o.date FROM orders o 
+JOIN
+restaurants r 
+ON o.r_id = r.r_id
+JOIN 
+order_details od
+ON o.order_id = od.order_id
+JOIN 
+food f
+ON od.f_id = f.f_id
+WHERE o.user_id = (SELECT user_id FROM users WHERE name LIKE 'Ankit') AND (date > '2022-06-10' and date < '2022-07-10') 
+
+6. Find restaurants with max repeated customers 
+
+SELECT t.r_name, COUNT(t.count) AS Total FROM (
+    SELECT r.r_name,o.user_id,COUNT(*) AS count FROM orders o
+    JOIN 
+    restaurants r
+    ON o.r_id = r.r_id
+    GROUP BY o.r_id,o.user_id
+    HAVING count > 1 ) t
+GROUP BY t.r_name
+ORDER BY Total DESC
+LIMIT 1
+
+7. Month over month revenue growth of swiggy
+
+SELECT Month, ((Revnue - Prev)/Prev)*100 AS Growth FROM (
+        WITH Sales AS (
+        SELECT  MONTHNAME(date) AS Month, SUM(amount) AS Revnue FROM orders
+        GROUP BY MONTHNAME(date)
+        ORDER BY MONTH(date) 
+        )
+
+    SELECT Month,Revnue,LAG(Revnue,1) OVER(ORDER BY Revnue) as Prev FROM Sales
+    
+   ) t
+
+
+8. Customer - favorite food
+
+WITH Sales AS (
+    SELECT o.user_id,u.name,f.f_name,COUNT(*) AS Count FROM orders o 
+    JOIN 
+    order_details od 
+    ON o.order_id = od.order_id
+    JOIN 
+    food f 
+    ON od.f_id = f.f_id
+    JOIN 
+    users u 
+    ON o.user_id = u.user_id
+    GROUP BY o.user_id,od.f_id
+	ORDER BY Count DESC 
+    )
+    
+SELECT name, f_name FROM Sales s1
+WHERE Count = (Select MAX(Count) FROM Sales s2 WHERE s2.user_id = s1.user_id) 
+
+
+
+
+
